@@ -1,0 +1,10 @@
+version: 2
+sources:
+  - name: taxi
+    schema: "{{ env_var('RAW_SCHEMA', 'taxi_raw') }}"
+    tables:
+      - name: raw_trips
+      - name: raw_zones
+        columns:
+          - name: location_id
+            data_tests: [unique, not_null]

@@ -1,0 +1,63 @@
+name: nyc-taxi-portfolio
+x-pipeline-env: &pipeline-env
+  POSTGRES_URL: postgresql://taxi:taxi@postgres:5432/taxi
+  PG_HOST: postgres
+  PG_PORT: '5432'
+  PG_USER: taxi
+  PG_PASSWORD: taxi
+  PG_DATABASE: taxi
+  RAW_SCHEMA: taxi_raw
+  DBT_SCHEMA: taxi_analytics
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: taxi
+      POSTGRES_PASSWORD: taxi
+      POSTGRES_DB: taxi
+    ports: ['127.0.0.1:15432:5432']
+    volumes:
+      - taxi-postgres:/var/lib/postgresql/data
+      - ./orchestration/airflow/init.sql:/docker-entrypoint-initdb.d/airflow.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U taxi -d taxi']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  pipeline:
+    build: .
+    image: nyc-taxi-portfolio:local
+    environment: *pipeline-env
+    volumes: ['./reports/generated:/app/reports/generated']
+    depends_on:
+      postgres:
+        condition: service_healthy
+  dashboard:
+    image: nyc-taxi-portfolio:local
+    build: .
+    environment: *pipeline-env
+    command: ['python', '-m', 'streamlit', 'run', 'dashboards/streamlit/app.py', '--server.address=0.0.0.0', '--browser.gatherUsageStats=false']
+    ports: ['127.0.0.1:8503:8501']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: [dashboard]
+  airflow:
+    build:
+      context: .
+      dockerfile: orchestration/airflow/Dockerfile
+    environment:
+      <<: *pipeline-env
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://taxi:taxi@postgres:5432/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    volumes: ['airflow-home:/opt/airflow']
+    ports: ['127.0.0.1:8083:8080']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: [airflow]
+    command: standalone
+volumes:
+  taxi-postgres:
+  airflow-home:

@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+.streamlit/secrets.toml
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
+reports/generated/
+data/downloaded/
