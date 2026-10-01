@@ -1,0 +1,6 @@
+pickup_borough,pickup_date,trip_count,total_fare,avg_tip_pct,avg_trip_distance
+Manhattan,2024-01-01,3,25.0,0.13333333333333333,1.6666666666666667
+Manhattan,2024-01-02,1,20.0,0.2,4.0
+Queens,2024-01-02,1,0.0,,0.0
+Queens,2024-01-04,2,35.0,0.2,3.5
+Manhattan,2024-02-01,1,7.0,0.14285714285714285,1.0

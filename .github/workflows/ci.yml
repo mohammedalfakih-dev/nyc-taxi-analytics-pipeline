@@ -1,0 +1,63 @@
+name: Verify taxi pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      POSTGRES_TEST_URL: postgresql://taxi:taxi@127.0.0.1:15432/taxi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.8.22'
+          python-version: '3.12'
+          enable-cache: true
+      - name: Install locked environment
+        run: uv sync --frozen
+      - name: Lint and format
+        run: |
+          uv run ruff check taxi_pipeline dashboards tests orchestration
+          uv run ruff format --check taxi_pipeline dashboards tests orchestration
+      - name: Start PostgreSQL
+        run: docker compose up -d --wait postgres
+      - name: Build and test fixture marts
+        run: |
+          uv run python -m taxi_pipeline.ingest --source sample
+          uv run dbt build --project-dir dbt --profiles-dir dbt
+          uv run python -m taxi_pipeline.report
+          uv run pytest -q
+      - name: Verify core image
+        run: |
+          docker compose build pipeline
+          docker compose run --rm pipeline python -m taxi_pipeline.ingest --source sample
+          docker compose run --rm pipeline dbt build --project-dir dbt --profiles-dir dbt
+      - name: Stop isolated services
+        if: always()
+        run: docker compose --profile dashboard --profile airflow down
+
+  airflow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start PostgreSQL and build Airflow image
+        run: |
+          docker compose up -d --wait postgres
+          docker compose build airflow
+      - name: Verify imports and execute sample DAG
+        run: |
+          docker compose run --rm airflow python /opt/taxi/test_dag.py
+          docker compose run --rm airflow python /opt/taxi/run_sample_dag.py
+      - name: Stop isolated services
+        if: always()
+        run: docker compose --profile dashboard --profile airflow down

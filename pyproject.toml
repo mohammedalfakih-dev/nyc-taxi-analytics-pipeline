@@ -1,0 +1,21 @@
+[project]
+name = "nyc-taxi-analytics-pipeline"
+version = "0.1.0"
+description = "NYC green taxi ingestion, dbt marts, and a Streamlit dashboard"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "pandas==2.2.3",
+  "pyarrow==18.1.0",
+  "psycopg2-binary==2.9.10",
+  "sqlalchemy==2.0.43",
+  "requests==2.32.5",
+  "dbt-postgres==1.10.2",
+  "streamlit==1.61.1",
+]
+[dependency-groups]
+dev = ["pytest==8.3.4", "ruff==0.8.4"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+[tool.ruff]
+line-length = 100
